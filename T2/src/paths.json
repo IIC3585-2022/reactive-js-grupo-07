@@ -1,0 +1,10 @@
+{
+  "images": {
+    "yellowDot": {
+      "path": "../images/yellowDot.png"
+    },
+    "wall": {
+      "path": "../images/wall.png"
+    }
+  }
+}
