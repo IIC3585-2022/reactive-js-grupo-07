@@ -9,6 +9,9 @@ const pacman = tileMap.getPacman(velocity);
 const mspacman = tileMap.getMsPacman(velocity);
 const enemies = tileMap.getEnemies(velocity);
 
+const gameOverSound = new Audio("./sounds/gameOver.wav");
+const gameWinSound = new Audio("./sounds/gameWin.wav");
+
 let gameOver = false;
 let gameWin = false;
 
@@ -27,7 +30,7 @@ function checkGameWin() {
   if (!gameWin) {
     gameWin = tileMap.didWin();
     if (gameWin) {
-      //gamewinsound
+      this.gameWinSound.play();
     }
   }
 }
@@ -66,7 +69,7 @@ function checkGameOver() {
   if (!gameOver) {
     gameOver = isGameOver();
     if (gameOver) {
-      //sonido perdi
+      this.gameOverSound.play();
     }
   }
 }
