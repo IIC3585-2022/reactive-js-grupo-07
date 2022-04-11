@@ -10,17 +10,12 @@ context.fillStyle = 'pink';
 const PADDLE_WIDTH = 50;
 const PADDLE_HEIGHT = 50;
 
-const BALL_RADIUS = 10;
-
-const BRICK_ROWS = 5;
-const BRICK_COLUMNS = 7;
-const BRICK_HEIGHT = 50;
 const BRICK_GAP = 3;
 
 function drawTitle() {
     context.textAlign = 'center';
     context.font = '24px Courier New';
-    context.fillText('rxjs breakout', canvas.width / 2, canvas.height / 2 - 24);
+    context.fillText('rxjs "packman"', canvas.width / 2, canvas.height / 2 - 24);
 }
 
 function drawControls() {
@@ -310,7 +305,7 @@ function factory() {
 function food_factory() {
     let foods = [];
     let radius = 10;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 1; i < 10; i++) {
         [2,4,6,8].forEach((j) => {
             foods.push({
                 x: 50*j + 25,
@@ -334,8 +329,8 @@ function collision(brick, position) {
 
 function food_collision(food, paddle){
     let dist_x = Math.abs(food.x - paddle.x);
-    let dist_y = Math.abs(food.y - paddle.y)
-    if (dist_x < 35 && dist_y < 35) {
+    let dist_y = Math.abs(food.y - paddle.y);
+    if (dist_x < 25 && dist_y < 25) {
         return true
     }
     return false
@@ -361,10 +356,11 @@ function update([ticker, paddle, objects]) {
     //    game.dispose();
     //}
 
-    //if (!objects.bricks.length) {
-    //    drawGameOver('CONGRATULATIONS');
-    //    game.dispose();
-    //}
+    //console.log(objects.foods)
+    if (!objects.foods.length) {
+        drawGameOver('CONGRATULATIONS');
+        game.dispose();
+    }
 }
 
 const game = Rx.Observable
