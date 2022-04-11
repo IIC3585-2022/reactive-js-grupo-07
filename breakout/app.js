@@ -61,18 +61,11 @@ function drawPaddle(position) {
     context.closePath();
 }
 
-function drawBall(ball) {
-    context.beginPath();
-    context.arc(ball.position.x, ball.position.y, BALL_RADIUS, 0, Math.PI * 2);
-    context.fill();
-    context.closePath();
-}
-
 function drawBrick(brick) {
     context.beginPath();
     context.rect(
-        brick.x - brick.width / 2,
-        brick.y - brick.height / 2,
+        brick.x,
+        brick.y,
         brick.width,
         brick.height
     );
@@ -84,6 +77,22 @@ function drawBricks(bricks) {
     bricks.forEach((brick) => drawBrick(brick));
 }
 
+function drawFood(food){
+    context.beginPath();
+    context.arc(
+        food.x,
+        food.y,
+        food.radius,
+        0,
+        Math.PI * 2
+    );
+    context.fill();
+    context.closePath();
+}
+
+function drawFoods(foods) {
+    foods.forEach((food) => drawFood(food));
+}
 
 /* Ticker */
 
@@ -135,49 +144,45 @@ const input$ = Rx.Observable
     )
     .distinctUntilChanged();
 
+/* Player */
 const paddle$ = ticker$
     .withLatestFrom(input$)
     .scan((position, [ticker, direction]) => {
-
+        var bricks = INITIAL_OBJECTS.bricks;
 
         let next_x = position.x + direction.horizontal * ticker.deltaTime * PADDLE_SPEED;
         let next_y = position.y + direction.vertical * ticker.deltaTime * PADDLE_SPEED;
-        return {
+        let next_position = {
             x:Math.max(Math.min(next_x, canvas.width - PADDLE_WIDTH / 2), PADDLE_WIDTH / 2), 
             y:Math.max(Math.min(next_y, canvas.height), PADDLE_HEIGHT)
         };
 
-    }, {x:canvas.width / 2, y:canvas.height})
+        var conflict = false;
+        bricks.forEach((brick)=>{
+            if (collision(brick,next_position)) {
+                conflict = true;
+            }
+        });
+
+        if (conflict) {
+            return position;
+        }
+
+        return next_position;
+
+    }, {x:canvas.width / 2, y:canvas.height/2})
     .distinctUntilChanged();
 
-
-/* Ball */
-
-const BALL_SPEED = 60;
+/* Objects */
 const INITIAL_OBJECTS = {
-    ball: {
-        position: {
-            x: canvas.width / 2,
-            y: canvas.height / 2
-        },
-        direction: {
-            x: 2,
-            y: 2
-        }
-    },
+    foods: food_factory(),
     bricks: factory(),
     score: 0
 };
 
-function hit(paddle, ball) {
-    return ball.position.x > paddle.x - PADDLE_WIDTH / 2
-        && ball.position.x < paddle.x + PADDLE_WIDTH / 2
-        && ball.position.y > canvas.height - PADDLE_HEIGHT - BALL_RADIUS / 2;
-}
-
 const objects$ = ticker$
     .withLatestFrom(paddle$)
-    .scan(({ball, bricks, collisions, score}, [ticker, paddle]) => {
+    .scan(({foods, bricks, collisions, score}, [ticker, paddle]) => {
 
         let survivors = [];
         collisions = {
@@ -185,37 +190,32 @@ const objects$ = ticker$
             floor: false,
             wall: false,
             ceiling: false,
-            brick: false
+            brick: false,
+            food: false
         };
 
-        ball.position.x = ball.position.x + ball.direction.x * ticker.deltaTime * BALL_SPEED;
-        ball.position.y = ball.position.y + ball.direction.y * ticker.deltaTime * BALL_SPEED;
+        // Politica de eliminar bricks
+        //bricks.forEach((brick) => {
+        //    if (!collision(brick, ball)) {
+        //        survivors.push(brick);
+        //    } else {
+        //        collisions.brick = true;
+        //        score = score + 10;
+        //    }
+        //});
 
-        bricks.forEach((brick) => {
-            if (!collision(brick, ball)) {
-                survivors.push(brick);
+        foods.forEach((food) => {
+            console.log(paddle.x, food.x)
+            if(!food_collision(food, paddle)) {
+                survivors.push(food);
             } else {
-                collisions.brick = true;
                 score = score + 10;
             }
         });
 
-        collisions.paddle = hit(paddle, ball);
-
-        if (ball.position.x < BALL_RADIUS || ball.position.x > canvas.width - BALL_RADIUS) {
-            ball.direction.x = -ball.direction.x;
-            collisions.wall = true;
-        }
-
-        collisions.ceiling = ball.position.y < BALL_RADIUS;
-
-        if (collisions.brick || collisions.paddle || collisions.ceiling ) {
-            ball.direction.y = -ball.direction.y;
-        }
-
         return {
-            ball: ball,
-            bricks: survivors,
+            foods: survivors,
+            bricks: bricks,
             collisions: collisions,
             score: score
         };
@@ -226,39 +226,120 @@ const objects$ = ticker$
 /* Bricks */
 
 function factory() {
-    let width = (canvas.width)/ 10;
     let bricks = [];
+    let width = 45;
+    let height = 45;
 
-    //for (let i = 0; i < BRICK_ROWS; i++) {
-    //    for (let j = 0; j < BRICK_COLUMNS; j++) {
-    //        bricks.push({
-    //            x: j * (width + BRICK_GAP) + width / 2 + BRICK_GAP,
-    //            y: i * (BRICK_HEIGHT + BRICK_GAP) + BRICK_HEIGHT / 2 + BRICK_GAP + 20,
-    //            width: width,
-    //            height: BRICK_HEIGHT
-    //        });
-    //    }
-    //}
+    for (let i = 0; i < 11; i++) {
+        bricks.push({
+            x: 50 * i,
+            y:0,
+            width:width,
+            height:height
+        });
 
-    for (let i = 0; i < 10; i++) {
-        for (let j = 0; j < 10; j++) {
-            bricks.push({
-                
-            })
-        }
-        
-    }
+        bricks.push({
+            x: 50 * i,
+            y: 500,
+            width:width,
+            height:height
+        })
+    };
+
+    for (let i = 0; i < 9; i++) {
+        bricks.push({
+            x: 0,
+            y:50+50*i,
+            width:width,
+            height:height
+        });
+        bricks.push({
+            x: 500,
+            y:50+50*i,
+            width:width,
+            height:height
+        });
+    };
+
+    [1,2,4,5,6,8,9].forEach((i) => {
+        bricks.push({
+            x: 50,
+            y: 50*i,
+            width:width,
+            height:height
+        });
+
+        bricks.push({
+            x: 450,
+            y: 50*i,
+            width:width,
+            height:height
+        });
+    });
+
+    [2,3,4,6,7,8].forEach((i) => {
+        bricks.push({
+            x: 150,
+            y: 50*i,
+            width:width,
+            height:height
+        });
+
+        bricks.push({
+            x: 350,
+            y: 50*i,
+            width:width,
+            height:height
+        });
+    });
+
+    [1,2,3,7,8,9].forEach((i) => {
+        bricks.push({
+            x: 250,
+            y: 50*i,
+            width:width,
+            height:height
+        });
+
+    });
 
     return bricks;
 }
 
-function collision(brick, ball) {
-    return ball.position.x + ball.direction.x > brick.x - brick.width / 2
-        && ball.position.x + ball.direction.x < brick.x + brick.width / 2
-        && ball.position.y + ball.direction.y > brick.y - brick.height / 2
-        && ball.position.y + ball.direction.y < brick.y + brick.height / 2;
+/*Food*/
+function food_factory() {
+    let foods = [];
+    let radius = 10;
+    for (let i = 0; i < 10; i++) {
+        [2,4,6,8].forEach((j) => {
+            foods.push({
+                x: 50*j + 25,
+                y: 50*i + 25,
+                radius: radius
+            });
+        })
+        
+    }
+
+    return foods;
 }
 
+function collision(brick, position) {
+    //console.log(position.x, brick.x)
+    return position.x  > brick.x - brick.width /2
+        && position.x  < brick.x + brick.width + PADDLE_WIDTH/ 2
+        && position.y  > brick.y
+        && position.y  < brick.y + brick.height + PADDLE_HEIGHT;
+}
+
+function food_collision(food, paddle){
+    let dist_x = Math.abs(food.x - paddle.x);
+    let dist_y = Math.abs(food.y - paddle.y)
+    if (dist_x < 35 && dist_y < 35) {
+        return true
+    }
+    return false
+}
 
 /* Game */
 
@@ -271,8 +352,8 @@ function update([ticker, paddle, objects]) {
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     drawPaddle(paddle);
-    drawBall(objects.ball);
     drawBricks(objects.bricks);
+    drawFoods(objects.foods);
     drawScore(objects.score);
 
     //if (objects.ball.position.y > canvas.height - BALL_RADIUS) {
@@ -280,10 +361,10 @@ function update([ticker, paddle, objects]) {
     //    game.dispose();
     //}
 
-    if (!objects.bricks.length) {
-        drawGameOver('CONGRATULATIONS');
-        game.dispose();
-    }
+    //if (!objects.bricks.length) {
+    //    drawGameOver('CONGRATULATIONS');
+    //    game.dispose();
+    //}
 }
 
 const game = Rx.Observable
