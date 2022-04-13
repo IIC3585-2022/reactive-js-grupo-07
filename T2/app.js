@@ -5,26 +5,31 @@ import Rx from 'rx';
 
 const canvas = document.getElementById('stage');
 const context = canvas.getContext('2d');
-context.fillStyle = 'pink';
+
 
 const PADDLE_WIDTH = 50;
 const PADDLE_HEIGHT = 50;
 
 const BRICK_GAP = 3;
 
+var countdown = 0;
+
 function drawTitle() {
+    context.fillStyle = 'pink';
     context.textAlign = 'center';
     context.font = '24px Courier New';
     context.fillText('rxjs "packman"', canvas.width / 2, canvas.height / 2 - 24);
 }
 
 function drawControls() {
+    context.fillStyle = 'pink';
     context.textAlign = 'center';
     context.font = '16px Courier New';
     context.fillText('presione cualquier tecla para empezar', canvas.width / 2, canvas.height / 2);
 }
 
 function drawGameOver(text) {
+    context.fillStyle = 'white';
     context.clearRect(canvas.width / 4, canvas.height / 3, canvas.width / 2, canvas.height / 3);
     context.textAlign = 'center';
     context.font = '24px Courier New';
@@ -32,18 +37,23 @@ function drawGameOver(text) {
 }
 
 function drawAuthor() {
+    context.fillStyle = 'pink';
     context.textAlign = 'center';
     context.font = '12px Courier New';
     context.fillText('by Manuel Wieser edited by Jose Luco', canvas.width / 2, canvas.height / 2 + 24);
 }
 
 function drawScore(score) {
+    context.fillStyle = 'white';
     context.textAlign = 'left';
     context.font = '16px Courier New';
-    context.fillText(score, BRICK_GAP, 16);
+    context.fillRect(0,0,100,25);
+    context.fillStyle = 'black';
+    context.fillText("SCORE: "+score, BRICK_GAP, 16);
 }
 
 function drawPaddle(position) {
+    context.fillStyle = 'pink';
     context.beginPath();
     context.arc(
         position.x,
@@ -57,6 +67,7 @@ function drawPaddle(position) {
 }
 
 function drawBrick(brick) {
+    context.fillStyle = 'pink';
     context.beginPath();
     context.rect(
         brick.x,
@@ -73,6 +84,7 @@ function drawBricks(bricks) {
 }
 
 function drawFood(food){
+    context.fillStyle = 'pink';
     context.beginPath();
     context.arc(
         food.x,
@@ -87,6 +99,41 @@ function drawFood(food){
 
 function drawFoods(foods) {
     foods.forEach((food) => drawFood(food));
+}
+
+function drawPower(power){
+    context.fillStyle = 'white';
+    context.beginPath();
+    context.arc(
+        power.x,
+        power.y,
+        power.radius,
+        0,
+        Math.PI * 2
+    );
+    context.fill();
+    context.closePath();
+}
+
+function drawPowers(powers) {
+    powers.forEach((power) => drawPower(power));
+}
+
+function drawGhost(ghost){
+    context.fillStyle= ghost.color;
+    context.beginPath();
+    context.rect(
+        ghost.x,
+        ghost.y,
+        ghost.width,
+        ghost.height
+    );
+    context.fill();
+    context.closePath();
+}
+
+function drawGhosts(ghosts) {
+    ghosts.forEach((ghost) => drawGhost(ghost));
 }
 
 /* Ticker */
@@ -170,6 +217,8 @@ const paddle$ = ticker$
 
 /* Objects */
 const INITIAL_OBJECTS = {
+    ghosts: ghost_factory(),
+    powers: power_factory(),
     foods: food_factory(),
     bricks: factory(),
     score: 0
@@ -177,9 +226,10 @@ const INITIAL_OBJECTS = {
 
 const objects$ = ticker$
     .withLatestFrom(paddle$)
-    .scan(({foods, bricks, collisions, score}, [ticker, paddle]) => {
+    .scan(({ghosts, powers, foods, bricks, collisions, score}, [ticker, paddle]) => {
 
         let survivors = [];
+        let power_survivors =[];
         collisions = {
             paddle: false,
             floor: false,
@@ -200,7 +250,7 @@ const objects$ = ticker$
         //});
 
         foods.forEach((food) => {
-            console.log(paddle.x, food.x)
+            //console.log(paddle.x, food.x)
             if(!food_collision(food, paddle)) {
                 survivors.push(food);
             } else {
@@ -208,11 +258,32 @@ const objects$ = ticker$
             }
         });
 
+        powers.forEach((power) => {
+            if (!food_collision(power, paddle)) {
+                power_survivors.push(power);
+            } else {
+                score = score + 100;
+                changeColor(ghosts, "blue");
+                countdown = 200;
+            }
+        });
+
+        /* Countdown de color fantasmas */
+        if (countdown > 1) {
+            countdown--;
+        }
+        else if (countdown == 1) {
+            countdown--;
+            changeColor(ghosts, "cyan");
+        }
+
         return {
+            powers: power_survivors,
             foods: survivors,
             bricks: bricks,
             collisions: collisions,
-            score: score
+            score: score,
+            ghosts: ghosts
         };
 
     }, INITIAL_OBJECTS);
@@ -319,6 +390,76 @@ function food_factory() {
     return foods;
 }
 
+/*Power*/
+function power_factory(){
+    let powers = [];
+    powers.push({
+        x: 175,
+        y: 75,
+        radius: 15
+    });
+
+    powers.push({
+        x: 375,
+        y: 75,
+        radius: 15
+    });
+
+    powers.push({
+        x: 175,
+        y: canvas.height - 75,
+        radius: 15
+    });
+
+    powers.push({
+        x: 375,
+        y: canvas.height -75,
+        radius: 15
+    });
+
+    return powers;
+}
+
+function ghost_factory(){
+    let ghosts = [];
+    let width = 30;
+    let height = 40;
+
+    ghosts.push({
+        x: 55,
+        y: 155,
+        width: width,
+        height: height,
+        color: "cyan"
+    });
+
+    ghosts.push({
+        x: 55,
+        y: 355,
+        width: width,
+        height: height,
+        color: "cyan"
+    });
+
+    ghosts.push({
+        x: 455,
+        y: 155,
+        width: width,
+        height: height,
+        color: "cyan"
+    });
+
+    ghosts.push({
+        x: 455,
+        y: 355,
+        width: width,
+        height: height,
+        color: "cyan"
+    });
+
+    return ghosts;
+}
+
 function collision(brick, position) {
     //console.log(position.x, brick.x)
     return position.x  > brick.x - brick.width /2
@@ -336,6 +477,12 @@ function food_collision(food, paddle){
     return false
 }
 
+function changeColor(ghosts, color){
+    ghosts.forEach((ghost) => {
+        ghost.color = color
+    });
+}
+
 /* Game */
 
 drawTitle();
@@ -349,6 +496,8 @@ function update([ticker, paddle, objects]) {
     drawPaddle(paddle);
     drawBricks(objects.bricks);
     drawFoods(objects.foods);
+    drawPowers(objects.powers);
+    drawGhosts(objects.ghosts);
     drawScore(objects.score);
 
     //if (objects.ball.position.y > canvas.height - BALL_RADIUS) {
@@ -361,6 +510,8 @@ function update([ticker, paddle, objects]) {
         drawGameOver('CONGRATULATIONS');
         game.dispose();
     }
+
+    //console.log(++tick_counter);
 }
 
 const game = Rx.Observable
